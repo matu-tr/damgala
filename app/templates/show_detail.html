@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Damgala — {{ show_title }}</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: #14161a; color: #e6e6e6; margin: 0; padding: 24px; }
+  .header { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+  .header img { width: 60px; height: 90px; object-fit: cover; border-radius: 6px; background: #1e2126; }
+  .header h1 { font-size: 20px; margin: 0; }
+  .back { display: inline-block; margin-bottom: 16px; color: #9a9ea6; text-decoration: none; font-size: 13px; }
+  .back:hover { color: #e6e6e6; }
+  .notice { color: #9a9ea6; font-size: 13px; margin-bottom: 20px; }
+
+  .season { margin-bottom: 24px; }
+  .season h2 { font-size: 14px; color: #9a9ea6; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #2a2d33; font-size: 13px; }
+  th { color: #9a9ea6; font-weight: 500; }
+  tr.unwatched td { color: #6a6e77; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+  .badge.watched { background: #1f4d2c; color: #9be3a8; }
+  .badge.unwatched { background: #2a2d33; color: #6a6e77; }
+  .del-btn { background: none; border: 1px solid #4d1f24; color: #e39b9b; border-radius: 4px; padding: 3px 9px; cursor: pointer; font-size: 12px; }
+  .del-btn:hover { background: #4d1f24; }
+</style>
+</head>
+<body>
+  <a class="back" href="/?type=show">&larr; Back to shows</a>
+
+  <div class="header">
+    {% if poster_url %}<img src="{{ poster_url }}" alt="">{% endif %}
+    <h1>{{ show_title }}</h1>
+  </div>
+
+  {% if not full_catalog_available %}
+  <p class="notice">Showing episodes with recorded watch history only. Set a TMDB API key to also see unwatched episodes.</p>
+  {% endif %}
+
+  {% for season_index, episodes in seasons %}
+  <div class="season">
+    <h2>Season {{ season_index }}</h2>
+    <table>
+      <thead>
+        <tr><th>Ep.</th><th>Title</th><th>Status</th><th>Watched on</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for ep in episodes %}
+        <tr class="{{ 'unwatched' if not ep.watched else '' }}">
+          <td>{{ ep.episode_index }}</td>
+          <td>{{ ep.title or "" }}</td>
+          <td>
+            {% if ep.watched %}
+              <span class="badge watched">Watched</span>
+            {% else %}
+              <span class="badge unwatched">Not watched</span>
+            {% endif %}
+          </td>
+          <td>{{ ep.viewed_at.strftime("%Y-%m-%d") if ep.viewed_at else "" }}</td>
+          <td>
+            {% if ep.watched %}
+            <form method="post" action="/history/delete-episode" data-confirm="Delete this episode from watch history?">
+              <input type="hidden" name="item_key" value="{{ ep.item_key }}">
+              <button type="submit" class="del-btn">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+
+  {% include "_confirm_dialog.html" %}
+</body>
+</html>

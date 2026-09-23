@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Damgala — Watch History</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: #14161a; color: #e6e6e6; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; margin: 0; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .header nav { display: flex; align-items: center; gap: 14px; font-size: 13px; }
+  .header nav a { color: #9a9ea6; text-decoration: none; }
+  .header nav a:hover { color: #e6e6e6; }
+  .header nav button { background: none; border: 1px solid #2a2d33; color: #9a9ea6; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .header nav button:hover { color: #e6e6e6; border-color: #4a4e57; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #2a2d33; }
+  .tabs a { padding: 10px 18px; color: #9a9ea6; text-decoration: none; font-size: 14px; border-bottom: 2px solid transparent; }
+  .tabs a.active { color: #e6e6e6; border-bottom-color: #2a5db0; font-weight: 600; }
+
+  .toolbar { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+  .toolbar select { font-size: 13px; background: #1e2126; color: #e6e6e6; border: 1px solid #2a2d33; border-radius: 4px; padding: 4px 8px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; }
+  .card { display: flex; flex-direction: column; position: relative; }
+  .card a.poster-link { display: block; }
+  .poster { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 6px; background: #1e2126; display: block; }
+  .poster.placeholder { display: flex; align-items: center; justify-content: center; color: #4a4e57; font-size: 12px; text-align: center; padding: 8px; }
+  .card-title { margin-top: 8px; font-size: 13px; font-weight: 600; line-height: 1.3; }
+  .card-title a { color: inherit; text-decoration: none; }
+  .card-title a:hover { text-decoration: underline; }
+  .card-meta { margin-top: 2px; font-size: 12px; color: #9a9ea6; }
+  .delete-form { position: absolute; top: 6px; right: 6px; }
+  .delete-btn { background: rgba(20, 22, 26, 0.85); border: 1px solid #4d1f24; color: #e39b9b; border-radius: 4px; width: 22px; height: 22px; line-height: 1; cursor: pointer; font-size: 13px; }
+  .delete-btn:hover { background: #4d1f24; }
+
+  .empty { color: #9a9ea6; font-size: 14px; padding: 40px 0; text-align: center; }
+  .empty a { color: #9fc4ff; }
+
+  .footer { margin-top: 32px; font-size: 13px; color: #9a9ea6; display: flex; align-items: center; gap: 12px; }
+  button.primary, .footer button { background: #2a5db0; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  button.primary:hover, .footer button:hover { background: #3a6dc0; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Damgala — Watch History</h1>
+    <nav>
+      <a href="/roulette">Watch Roulette</a>
+      <a href="/integrations">Integrations</a>
+      <span>{{ user.email }}</span>
+      <form method="post" action="/logout"><button type="submit">Log out</button></form>
+    </nav>
+  </div>
+
+  {% if not has_integration %}
+  <div class="empty">No watch history sources connected yet. <a href="/integrations">Connect one</a> to get started.</div>
+  {% else %}
+
+  <div class="tabs">
+    <a href="?type=movie&sort={{ filters.sort }}" class="{{ 'active' if filters.type == 'movie' else '' }}">Movies</a>
+    <a href="?type=show&sort={{ filters.sort }}" class="{{ 'active' if filters.type == 'show' else '' }}">Shows</a>
+  </div>
+
+  <div class="toolbar">
+    <form method="get" action="/">
+      <input type="hidden" name="type" value="{{ filters.type }}">
+      <select name="sort" onchange="this.form.submit()">
+        <option value="last_watched" {% if filters.sort == "last_watched" %}selected{% endif %}>Last watched</option>
+        <option value="title" {% if filters.sort == "title" %}selected{% endif %}>Title (A-Z)</option>
+      </select>
+    </form>
+  </div>
+
+  {% if rows %}
+  <div class="grid">
+    {% for row in rows %}
+    <div class="card">
+      <form class="delete-form" method="post" action="/history/delete" data-confirm="Delete watch history for {{ row.title }}?">
+        <input type="hidden" name="media_type" value="{{ row.media_type }}">
+        <input type="hidden" name="key" value="{{ row.key }}">
+        <button type="submit" class="delete-btn" title="Delete from history">&times;</button>
+      </form>
+      {% if row.media_type == "show" %}
+        <a class="poster-link" href="/show?key={{ row.key | urlencode }}">
+      {% endif %}
+      {% if row.poster_url %}
+        <img class="poster" src="{{ row.poster_url }}" alt="{{ row.title }}" loading="lazy">
+      {% else %}
+        <div class="poster placeholder">{{ row.title }}</div>
+      {% endif %}
+      {% if row.media_type == "show" %}
+        </a>
+      {% endif %}
+      <div class="card-title">
+        {% if row.media_type == "show" %}
+          <a href="/show?key={{ row.key | urlencode }}">{{ row.title }}</a>
+        {% else %}
+          {{ row.title }}
+        {% endif %}
+      </div>
+      <div class="card-meta">
+        {% if row.media_type == "movie" %}
+          watched {{ row.watch_count }}x
+        {% else %}
+          {{ row.episodes_watched }} episode{{ "" if row.episodes_watched == 1 else "s" }} watched
+        {% endif %}
+      </div>
+      <div class="card-meta">{{ row.last_watched.strftime("%Y-%m-%d") if row.last_watched else "" }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">No watch history yet.</div>
+  {% endif %}
+
+  <div class="footer">
+    <span>
+      Last synced:
+      {% if last_run_at %}
+        {{ last_run_at.strftime("%Y-%m-%d %H:%M") }}
+      {% else %}
+        never
+      {% endif %}
+    </span>
+    <form method="post" action="/api/sync">
+      <button type="submit" class="primary">Sync now</button>
+    </form>
+  </div>
+
+  {% endif %}
+
+  {% include "_confirm_dialog.html" %}
+</body>
+</html>

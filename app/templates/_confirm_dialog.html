@@ -1,0 +1,50 @@
+<style>
+  dialog#confirm-dialog { background: #1a1c21; color: #e6e6e6; border: 1px solid #2a2d33; border-radius: 8px; padding: 20px; max-width: 320px; }
+  dialog#confirm-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+  dialog#confirm-dialog p { margin: 0 0 18px; font-size: 14px; line-height: 1.4; }
+  .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .confirm-actions button { padding: 6px 14px; border-radius: 4px; font-size: 13px; cursor: pointer; border: none; }
+  #confirm-cancel { background: #2a2d33; color: #e6e6e6; }
+  #confirm-cancel:hover { background: #383c44; }
+  #confirm-ok { background: #4d1f24; color: #e39b9b; }
+  #confirm-ok:hover { background: #612530; }
+</style>
+
+<dialog id="confirm-dialog">
+  <p id="confirm-message"></p>
+  <div class="confirm-actions">
+    <button type="button" id="confirm-cancel">Cancel</button>
+    <button type="button" id="confirm-ok">Delete</button>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  var dialog = document.getElementById("confirm-dialog");
+  var message = document.getElementById("confirm-message");
+  var okBtn = document.getElementById("confirm-ok");
+  var cancelBtn = document.getElementById("confirm-cancel");
+  var pendingForm = null;
+
+  document.querySelectorAll("form[data-confirm]").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      if (form.dataset.confirmed === "true") return;
+      e.preventDefault();
+      pendingForm = form;
+      message.textContent = form.dataset.confirm;
+      dialog.showModal();
+    });
+  });
+
+  okBtn.addEventListener("click", function () {
+    dialog.close();
+    if (pendingForm) {
+      pendingForm.dataset.confirmed = "true";
+      pendingForm.requestSubmit();
+    }
+  });
+  cancelBtn.addEventListener("click", function () {
+    dialog.close();
+  });
+})();
+</script>

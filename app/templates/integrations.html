@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Damgala — Integrations</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: #14161a; color: #e6e6e6; margin: 0; padding: 24px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  h1 { font-size: 20px; margin: 0; }
+  .header nav { display: flex; align-items: center; gap: 14px; font-size: 13px; }
+  .header nav a { color: #9a9ea6; text-decoration: none; }
+  .header nav a:hover { color: #e6e6e6; }
+  .header nav button { background: none; border: 1px solid #2a2d33; color: #9a9ea6; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .header nav button:hover { color: #e6e6e6; border-color: #4a4e57; }
+
+  .card { max-width: 520px; background: #1a1c21; border: 1px solid #2a2d33; border-radius: 8px; padding: 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 14px; }
+  .card img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+  .card .avatar-placeholder { width: 40px; height: 40px; border-radius: 50%; background: #2a2d33; }
+  .card .info { flex: 1; }
+  .card .provider { font-size: 12px; color: #9a9ea6; text-transform: uppercase; letter-spacing: 0.04em; }
+  .card .name { font-size: 15px; font-weight: 600; }
+  .card button { background: none; border: 1px solid #4d1f24; color: #e39b9b; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .card button:hover { background: #4d1f24; }
+
+  .connect-btn { display: inline-block; background: #e5a00d; color: #14161a; font-weight: 600; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; margin-top: 8px; }
+  .connect-btn:hover { background: #f5b52d; }
+
+  .empty { color: #9a9ea6; font-size: 14px; margin-bottom: 20px; }
+
+  .section { margin-top: 40px; max-width: 520px; }
+  .section h2 { font-size: 14px; color: #9a9ea6; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+  .section p { font-size: 13px; color: #9a9ea6; margin-bottom: 12px; }
+  .section p a { color: #9fc4ff; }
+  .tmdb-form { display: flex; gap: 8px; }
+  .tmdb-form input { flex: 1; padding: 8px 10px; background: #1e2126; border: 1px solid #2a2d33; border-radius: 4px; color: #e6e6e6; font-size: 13px; }
+  .tmdb-form button { background: #2a5db0; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  .tmdb-form button:hover { background: #3a6dc0; }
+  .status { font-size: 12px; color: #9be3a8; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Integrations</h1>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/roulette">Watch Roulette</a>
+      <span>{{ user.email }}</span>
+      <form method="post" action="/logout"><button type="submit">Log out</button></form>
+    </nav>
+  </div>
+
+  {% if integrations %}
+    {% for integration in integrations %}
+    <div class="card">
+      {% if integration.thumb_url %}
+        <img src="{{ integration.thumb_url }}" alt="">
+      {% else %}
+        <div class="avatar-placeholder"></div>
+      {% endif %}
+      <div class="info">
+        <div class="provider">{{ integration.provider }}</div>
+        <div class="name">{{ integration.display_name }}</div>
+      </div>
+      <form method="post" action="/integrations/{{ integration.id }}/disconnect" data-confirm="Disconnect this account? Its watch history will be deleted.">
+        <button type="submit">Disconnect</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">No integrations connected yet.</div>
+  {% endif %}
+
+  <a class="connect-btn" href="/integrations/plex/connect">Connect Plex</a>
+
+  <div class="section">
+    <h2>TMDB API key</h2>
+    <p>
+      Powers Watch Roulette and unwatched-episode listings. Free key from
+      <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org</a>.
+    </p>
+    <form class="tmdb-form" method="post" action="/settings/tmdb">
+      <input type="password" name="tmdb_api_key" placeholder="TMDB API key" value="{{ tmdb_api_key or '' }}">
+      <button type="submit">Save</button>
+    </form>
+    {% if tmdb_api_key %}<div class="status">Configured.</div>{% endif %}
+  </div>
+
+  {% include "_confirm_dialog.html" %}
+</body>
+</html>
