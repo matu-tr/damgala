@@ -32,11 +32,14 @@ Integrations page.
 
 ## Image builds
 
-Pushing a version tag (e.g. `v0.1.0`) triggers `.github/workflows/build.yml`,
-which builds the image, pushes it to `ghcr.io/matu-tr/damgala:latest` (and
-a matching `:vX.Y.Z` tag), and creates a GitHub Release for that tag. No
-manual `docker build` step needed for deployment — just tag and push, then
-pull the new image on the host.
+Images are built by Jenkins (https://jenkins.matu.tr, job `damgala`) from the
+`Jenkinsfile`; the job itself is defined in `matu-tr/jenkins`. Every push to
+`main` checks that the image still builds. Pushing a version tag (e.g.
+`v0.2.0`) additionally pushes it to `ghcr.io/matu-tr/damgala:latest` (and a
+matching `:vX.Y.Z` tag) and creates a GitHub Release for that tag. Jenkins
+checks for new commits and tags every 5 minutes. No manual `docker build`
+step needed for deployment — just tag and push, then pull the new image on
+the host.
 
 ## Installing as a TrueNAS SCALE Custom App
 
