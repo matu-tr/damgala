@@ -33,18 +33,19 @@ Integrations page.
 ## Image builds
 
 Images are built by Jenkins (https://jenkins.matu.tr, job `damgala`) from the
-`Jenkinsfile`; the job itself is defined in `matu-tr/jenkins`. Every push to
-`main` checks that the image still builds. Pushing a version tag (e.g.
-`v0.2.0`) additionally pushes it to `ghcr.io/matu-tr/damgala:latest` (and a
-matching `:vX.Y.Z` tag) and creates a GitHub Release for that tag. Jenkins
-checks for new commits and tags every 5 minutes. No manual `docker build`
-step needed for deployment — just tag and push, then pull the new image on
-the host.
+`Jenkinsfile`; the job itself is defined in `matu-tr/jenkins`. The build runs
+on the TrueNAS host's own Docker, so the image lands there directly — nothing
+is pushed to a registry. Every push to `main` checks that the image still
+builds. Pushing a version tag (e.g. `v0.2.0`) additionally keeps the image as
+`local/damgala:v0.2.0` and `local/damgala:latest`; the three newest version
+tags are kept for rollback. Jenkins checks for new commits and tags every 5
+minutes.
 
 ## Installing as a TrueNAS SCALE Custom App
 
-1. **Image**: `ghcr.io/matu-tr/damgala`, tag `latest`. Set Pull Policy to
-   "Always pull" so restarts pick up newly published images.
+1. **Image**: `local/damgala`, tag `latest` (or a `vX.Y.Z` tag to pin a
+   version). Set Pull Policy to "Never pull" — the image only exists on this
+   host, so a pull would fail.
 2. **Storage**: in TrueNAS Apps, add an ixVolume (or Host Path Volume)
    mounted at `/data` inside the container. This is where the SQLite
    database (accounts, integrations, watch history) lives, so it survives
@@ -53,15 +54,14 @@ the host.
 4. **Environment variables**: all optional, see the table below.
 5. Start the app, open it in a browser, sign up and connect Plex.
 
-To ship a code update: push to `main` (CI builds and publishes the image),
-then restart the app from the TrueNAS Apps page to pull the fresh image —
-Custom Apps don't reliably surface an "Update Available" badge on their own,
-so a manual restart is the dependable way to pick it up.
+To ship a code update: push a `vX.Y.Z` tag, wait for the Jenkins build, then
+redeploy the app (Apps → damgala → Edit → Save) so its container is recreated
+from the new `latest`. To roll back, point the app at an older `vX.Y.Z` tag.
 
 ## Upgrading from MTPSync
 
 This project was renamed from MTPSync to Damgala. Two things moved with it:
-the image is now `ghcr.io/matu-tr/damgala`, and the default database path
+the image is now `local/damgala` (built on the host by Jenkins), and the default database path
 changed from `/data/mtpsync.db` to `/data/damgala.db`.
 
 Your data is not touched by the rename — the volume still holds the same

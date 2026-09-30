@@ -1,7 +1,7 @@
 services:
   damgala:
     build: .
-    image: ghcr.io/matu-tr/damgala:latest
+    image: local/damgala:latest
     container_name: damgala
     restart: unless-stopped
     environment:

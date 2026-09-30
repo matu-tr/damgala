@@ -7,74 +7,50 @@ pipeline {
     }
 
     environment {
-        IMAGE = 'ghcr.io/matu-tr/damgala'
+        // Built straight into the TrueNAS host's Docker (the agent shares its daemon);
+        // nothing is pushed to a registry.
+        IMAGE = 'local/damgala'
+        KEEP_VERSIONS = '3'
     }
 
     stages {
-        // main: prove the image still builds. Tags (v*.*.*): build, push, release.
+        // main: prove the image still builds. Tags (vX.Y.Z): keep it as :vX.Y.Z and :latest.
         stage('Build image') {
             steps {
                 sh 'docker build --pull -t "$IMAGE:ci-$BUILD_TAG" .'
             }
         }
 
-        stage('Verify tag format') {
+        stage('Tag release image') {
             when { buildingTag() }
             steps {
                 sh '''
                     echo "$TAG_NAME" | grep -Eq '^v[0-9]+\\.[0-9]+\\.[0-9]+$' || {
                         echo "Tag $TAG_NAME is not vX.Y.Z"; exit 1; }
+                    docker tag "$IMAGE:ci-$BUILD_TAG" "$IMAGE:$TAG_NAME"
+                    docker tag "$IMAGE:ci-$BUILD_TAG" "$IMAGE:latest"
                 '''
             }
         }
 
-        stage('Push to GHCR') {
+        // Keeps the newest few version tags for rollback; older ones are untagged.
+        stage('Prune old versions') {
             when { buildingTag() }
             steps {
-                withCredentials([usernamePassword(credentialsId: 'ghcr-matu-tr',
-                        usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
-                    // A per-build DOCKER_CONFIG keeps the registry login off the shared agent.
-                    sh '''
-                        export DOCKER_CONFIG="$WORKSPACE_TMP/docker"
-                        mkdir -p "$DOCKER_CONFIG"
-                        echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_USER" --password-stdin
-                        for tag in "$TAG_NAME" latest; do
-                            docker tag "$IMAGE:ci-$BUILD_TAG" "$IMAGE:$tag"
-                            docker push "$IMAGE:$tag"
-                        done
-                        docker logout ghcr.io
-                    '''
-                }
-            }
-        }
-
-        stage('GitHub release') {
-            when { buildingTag() }
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'ghcr-matu-tr',
-                        usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
-                    sh '''
-                        curl -fsS -X POST \
-                            -H "Authorization: Bearer $GH_TOKEN" \
-                            -H "Accept: application/vnd.github+json" \
-                            https://api.github.com/repos/matu-tr/damgala/releases \
-                            -d "{\\"tag_name\\":\\"$TAG_NAME\\",\\"generate_release_notes\\":true}" \
-                            -o /dev/null
-                    '''
-                }
+                sh '''
+                    docker image ls "$IMAGE" --format '{{.Tag}}' \
+                        | grep -E '^v[0-9]+\\.[0-9]+\\.[0-9]+$' \
+                        | sort -V -r \
+                        | tail -n +"$((KEEP_VERSIONS + 1))" \
+                        | while read -r old; do docker image rm "$IMAGE:$old"; done
+                '''
             }
         }
     }
 
     post {
-        // The agent shares the host's Docker daemon; leave no tags of ours behind.
         always {
-            sh '''
-                docker image rm "$IMAGE:ci-$BUILD_TAG" >/dev/null 2>&1 || true
-                if [ -n "$TAG_NAME" ]; then
-                    docker image rm "$IMAGE:$TAG_NAME" "$IMAGE:latest" >/dev/null 2>&1 || true
-                fi
-            '''
+            sh 'docker image rm "$IMAGE:ci-$BUILD_TAG" >/dev/null 2>&1 || true'
         }
     }
 }
